@@ -14,6 +14,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
+    <!-- Chart.js for interactive charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+
     <!-- Custom Styles -->
     <style>
         body {
@@ -30,37 +35,25 @@
             transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
-        /* For the interactive pod cards */
-        .pod-card {
-            perspective: 1000px;
+        .map-marker {
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            animation: pulse 2.5s infinite ease-in-out;
         }
-        .pod-card-inner {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            transition: transform 0.6s;
-            transform-style: preserve-3d;
+        .map-marker:hover {
+            animation: none;
+            transform: scale(1.6);
+            fill: #fbbf24; /* amber-400 */
         }
-        .pod-card:hover .pod-card-inner {
-            transform: rotateY(180deg);
-        }
-        .pod-card-front, .pod-card-back {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 1.5rem;
-            border-radius: 1rem;
-        }
-        .pod-card-back {
-            transform: rotateY(180deg);
-            background-color: #1e293b; /* slate-800 */
-            color: white;
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
         }
         /* Roadmap styles */
         .roadmap-item::before {
@@ -82,6 +75,53 @@
             width: 2px;
             background: #e2e8f0; /* slate-200 */
         }
+        /* Pod Selector styles */
+        .pod-selector.active {
+            background-color: #eff6ff; /* blue-50 */
+            border-color: #3b82f6; /* blue-500 */
+            color: #2563eb; /* blue-600 */
+        }
+        /* Architecture diagram styles */
+        .arch-box {
+            border: 1px solid #374151; /* gray-700 */
+            background-color: #1f2937; /* gray-800 */
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+        }
+        .arch-connector {
+            position: relative;
+            height: 2rem;
+            width: 100%;
+        }
+        .arch-connector::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #4b5563; /* gray-600 */
+            transform: translateX(-50%);
+        }
+        .arch-horizontal-connector {
+            position: relative;
+            width: 100%;
+            height: 2px;
+            background-color: #4b5563;
+        }
+        .arch-t-junction::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 50%;
+            width: 2px;
+            background-color: #4b5563;
+            transform: translateX(-50%);
+        }
     </style>
 </head>
 
@@ -90,33 +130,26 @@
     <!-- Header -->
     <header id="header" class="bg-white/80 backdrop-blur-lg fixed top-0 left-0 right-0 z-50 shadow-sm">
         <div class="container mx-auto px-6 py-4 flex justify-between items-center">
-            <a href="#" class="text-2xl font-bold text-slate-800">
-                AMAR <span class="text-blue-600">.</span>
-            </a>
-            <nav class="hidden md:flex space-x-8 items-center">
-                <a href="#opportunity" class="text-slate-600 hover:text-blue-600">Opportunity</a>
-                <a href="#product" class="text-slate-600 hover:text-blue-600">Product</a>
-                <a href="#tech" class="text-slate-600 hover:text-blue-600">Technology</a>
+            <a href="#" class="text-2xl font-bold text-slate-800">AMAR <span class="text-blue-600">.</span></a>
+            <nav class="hidden md:flex space-x-8 items-center text-sm font-medium">
+                <a href="#problem" class="text-slate-600 hover:text-blue-600">Problem</a>
+                <a href="#solution" class="text-slate-600 hover:text-blue-600">Solution</a>
+                <a href="#market" class="text-slate-600 hover:text-blue-600">Market</a>
                 <a href="#model" class="text-slate-600 hover:text-blue-600">Model</a>
+                <a href="#tech" class="text-slate-600 hover:text-blue-600">Technology</a>
                 <a href="#roadmap" class="text-slate-600 hover:text-blue-600">Roadmap</a>
             </nav>
-            <a href="#contact" class="hidden md:block bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg cta-button">
-                Request a Demo
-            </a>
-            <button id="mobile-menu-button" class="md:hidden text-slate-800">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
-            </button>
+            <a href="#contact" class="hidden md:block bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg cta-button">Request a Demo</a>
+            <button id="mobile-menu-button" class="md:hidden text-slate-800"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg></button>
         </div>
-        <!-- Mobile Menu -->
         <div id="mobile-menu" class="hidden md:hidden px-6 pb-4">
-             <a href="#opportunity" class="block py-2 text-slate-600 hover:text-blue-600">Opportunity</a>
-             <a href="#product" class="block py-2 text-slate-600 hover:text-blue-600">Product</a>
-             <a href="#tech" class="block py-2 text-slate-600 hover:text-blue-600">Technology</a>
-             <a href="#model" class="block py-2 text-slate-600 hover:text-blue-600">Model</a>
-             <a href="#roadmap" class="block py-2 text-slate-600 hover:text-blue-600">Roadmap</a>
-            <a href="#contact" class="block mt-4 bg-blue-600 text-white text-center font-semibold px-5 py-2 rounded-lg cta-button">
-                Request a Demo
-            </a>
+            <a href="#problem" class="block py-2 text-slate-600 hover:text-blue-600">Problem</a>
+            <a href="#solution" class="block py-2 text-slate-600 hover:text-blue-600">Solution</a>
+            <a href="#market" class="block py-2 text-slate-600 hover:text-blue-600">Market</a>
+            <a href="#model" class="block py-2 text-slate-600 hover:text-blue-600">Model</a>
+            <a href="#tech" class="block py-2 text-slate-600 hover:text-blue-600">Technology</a>
+            <a href="#roadmap" class="block py-2 text-slate-600 hover:text-blue-600">Roadmap</a>
+            <a href="#contact" class="block mt-4 bg-blue-600 text-white text-center font-semibold px-5 py-2 rounded-lg cta-button">Request a Demo</a>
         </div>
     </header>
 
@@ -124,204 +157,140 @@
         <!-- Hero Section -->
         <section class="hero-gradient text-white pt-32 pb-20">
             <div class="container mx-auto px-6 text-center">
-                <h1 class="text-3xl md:text-5xl font-extrabold leading-tight mb-4">AMAR — Al-Mudarib Al-Raqmi</h1>
-                <h2 class="text-2xl md:text-4xl font-semibold text-slate-300 mb-6">A Halal, Research-Backed Algorithmic Platform for Emerging Markets.</h2>
-                <p class="text-lg md:text-xl text-slate-400 max-w-4xl mx-auto mb-10">AMAR is a FinTech platform leveraging proprietary algorithms to provide active, Shariah-compliant investment management for the next billion investors — starting with the Pakistan Stock Exchange (PSX).</p>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto text-left">
-                    <div class="bg-white/10 p-6 rounded-lg backdrop-blur-sm">
-                        <h3 class="font-bold text-xl mb-2 text-amber-300">Shariah Compliance</h3>
-                        <p class="text-slate-300">Automated, real-time, and auditable screening of all equities based on AAOIFI standards.</p>
-                    </div>
-                    <div class="bg-white/10 p-6 rounded-lg backdrop-blur-sm">
-                        <h3 class="font-bold text-xl mb-2 text-amber-300">Active Algo Pods</h3>
-                        <p class="text-slate-300">Curated, back-tested trading strategies packaged into simple, risk-tiered investment "Pods".</p>
-                    </div>
-                    <div class="bg-white/10 p-6 rounded-lg backdrop-blur-sm">
-                        <h3 class="font-bold text-xl mb-2 text-amber-300">Ethical Business Model</h3>
-                        <p class="text-slate-300">A Mudarabah profit-sharing model. We only earn a performance fee when you profit.</p>
-                    </div>
-                </div>
+                <h1 class="text-4xl md:text-6xl font-extrabold leading-tight mb-4">Unlocking Halal Alpha in The<br> World's Fastest-Growing Markets.</h1>
+                <p class="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto mb-8">AMAR is a FinTech platform leveraging proprietary algorithms to provide active, Shariah-compliant investment management for the next billion investors.</p>
+                <a href="#contact" class="bg-amber-400 text-slate-900 font-bold px-8 py-4 rounded-lg cta-button text-lg">Request a Demo</a>
             </div>
         </section>
 
-        <!-- The Opportunity Section -->
-        <section id="opportunity" class="py-20 bg-white">
+        <!-- The Problem Section -->
+        <section id="problem" class="py-20 bg-white">
             <div class="container mx-auto px-6">
                 <div class="text-center mb-12">
-                    <h2 class="text-3xl md:text-4xl font-bold text-slate-800">The First Mover Advantage</h2>
-                    <p class="text-lg text-slate-600 mt-2 max-w-3xl mx-auto">We sit at the intersection of three massive trends, addressing a critical market gap for a tech-savvy, ethically-conscious generation.</p>
+                    <h2 class="text-3xl md:text-4xl font-bold text-slate-800">A Trillion-Dollar Missed Opportunity</h2>
+                    <p class="text-lg text-slate-600 mt-2 max-w-3xl mx-auto">A massive, tech-savvy demographic in high-growth markets is critically underserved by existing financial products.</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
                     <div class="bg-slate-50 p-6 rounded-lg">
                         <h3 class="text-4xl font-bold text-blue-600 mb-2">$3T+</h3>
                         <p class="font-semibold text-slate-800">Global Islamic Finance Market</p>
-                        <p class="text-slate-600 text-sm">Growing rapidly but lacks accessible, active retail investment tools.</p>
+                        <p class="text-slate-600 text-sm">Yet lacks accessible, actively managed investment tools for retail investors.</p>
                     </div>
                     <div class="bg-slate-50 p-6 rounded-lg">
-                        <h3 class="text-4xl font-bold text-blue-600 mb-2">700M+</h3>
-                        <p class="font-semibold text-slate-800">Population in Target Markets</p>
-                        <p class="text-slate-600 text-sm">Young, urbanizing, and digitally native (Pakistan, Indonesia, Nigeria).</p>
+                        <h3 class="text-4xl font-bold text-blue-600 mb-2">1B+</h3>
+                        <p class="font-semibold text-slate-800">Combined Muslim Population</p>
+                        <p class="text-slate-600 text-sm">In our target markets with huge youth populations and soaring digital adoption.</p>
                     </div>
                     <div class="bg-slate-50 p-6 rounded-lg">
-                        <h3 class="text-4xl font-bold text-blue-600 mb-2">The Unmet Need</h3>
-                        <p class="font-semibold text-slate-800">Beyond Passive Investing</p>
-                        <p class="text-slate-600 text-sm">Current options are passive ETFs or complex self-trading. We offer the missing middle: managed, active, Halal returns.</p>
+                        <h3 class="text-4xl font-bold text-blue-600 mb-2">The Gap</h3>
+                        <p class="font-semibold text-slate-800">Passive vs. Complex</p>
+                        <p class="text-slate-600 text-sm">Current options are either passive (ETFs) or too complex (self-trading), failing to meet demand for active, managed Halal returns.</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- The Product Section -->
-        <section id="product" class="py-20">
+        <!-- The Solution Section -->
+        <section id="solution" class="py-20">
             <div class="container mx-auto px-6">
-                <div class="text-center mb-16">
-                    <h2 class="text-3xl md:text-4xl font-bold text-slate-800">The Product: Sophistication, Simplified</h2>
-                    <p class="text-lg text-slate-600 mt-2 max-w-3xl mx-auto">A seamless user experience from onboarding to tracking, built on powerful, curated trading strategies.</p>
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-slate-800">Our Solution: The AMAR Platform</h2>
+                    <p class="text-lg text-slate-600 mt-2">An automated, mobile-first platform that makes sophisticated Halal investing simple and transparent.</p>
                 </div>
-
-                <div class="text-center mb-16">
-                    <h3 class="text-2xl font-semibold text-slate-800 mb-8">Core Trading Pods (Hover to see strategy)</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                        <!-- Momentum Growth Pod -->
-                        <div class="pod-card h-64">
-                            <div class="pod-card-inner">
-                                <div class="pod-card-front bg-white shadow-lg border-t-4 border-amber-500">
-                                    <h4 class="text-2xl font-bold text-slate-800">Momentum Growth</h4>
-                                    <p class="font-semibold text-amber-500">Aggressive</p>
-                                </div>
-                                <div class="pod-card-back">
-                                    <h4 class="font-bold text-lg">Strategy Logic</h4>
-                                    <p class="text-sm text-slate-300">3-6 month momentum + 20/50 EMA confirmation. Stop-loss is ATR-based.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Quality Value Pod -->
-                        <div class="pod-card h-64">
-                            <div class="pod-card-inner">
-                                <div class="pod-card-front bg-white shadow-lg border-t-4 border-blue-500">
-                                    <h4 class="text-2xl font-bold text-slate-800">Quality Value</h4>
-                                    <p class="font-semibold text-blue-500">Moderate</p>
-                                </div>
-                                <div class="pod-card-back">
-                                    <h4 class="font-bold text-lg">Strategy Logic</h4>
-                                    <p class="text-sm text-slate-300">Piotroski F-score + P/E below sector median. Buys dips with RSI < 40.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Dividend Hunter Pod -->
-                        <div class="pod-card h-64">
-                            <div class="pod-card-inner">
-                                <div class="pod-card-front bg-white shadow-lg border-t-4 border-green-500">
-                                    <h4 class="text-2xl font-bold text-slate-800">Dividend Hunter</h4>
-                                    <p class="font-semibold text-green-500">Conservative</p>
-                                </div>
-                                <div class="pod-card-back">
-                                    <h4 class="font-bold text-lg">Strategy Logic</h4>
-                                    <p class="text-sm text-slate-300">High dividend yield + stable cash flows. Long-hold with periodic rebalancing.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Volatility Arb Pod -->
-                        <div class="pod-card h-64">
-                            <div class="pod-card-inner">
-                                <div class="pod-card-front bg-white shadow-lg border-t-4 border-purple-500">
-                                    <h4 class="text-2xl font-bold text-slate-800">Volatility Arb</h4>
-                                    <p class="font-semibold text-purple-500">Tactical</p>
-                                </div>
-                                <div class="pod-card-back">
-                                    <h4 class="font-bold text-lg">Strategy Logic</h4>
-                                    <p class="text-sm text-slate-300">Volatility breakout trades with position size determined by GARCH forecast.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+                    <div class="text-center"><div class="flex items-center justify-center h-20 w-20 bg-blue-100 text-blue-600 rounded-full mx-auto mb-4"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M12 6V3m0 18v-3" /></svg></div><h3 class="text-xl font-bold text-slate-800 mb-2">Automated Trading Pods</h3><p class="text-slate-600">Users invest in algorithm-driven strategies, not individual stocks. We handle the complex trading decisions.</p></div>
+                    <div class="text-center"><div class="flex items-center justify-center h-20 w-20 bg-blue-100 text-blue-600 rounded-full mx-auto mb-4"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg></div><h3 class="text-xl font-bold text-slate-800 mb-2">Proprietary Shariah Engine</h3><p class="text-slate-600">Our core IP. A real-time engine that screens all assets for both qualitative and quantitative Shariah compliance.</p></div>
+                    <div class="text-center"><div class="flex items-center justify-center h-20 w-20 bg-blue-100 text-blue-600 rounded-full mx-auto mb-4"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m-9 9h18" /></svg></div><h3 class="text-xl font-bold text-slate-800 mb-2">Seamless Multi-Market Access</h3><p class="text-slate-600">A single platform to access high-growth emerging markets, handling all cross-border complexities.</p></div>
                 </div>
+            </div>
+        </section>
 
-                <div class="text-center">
-                    <h3 class="text-2xl font-semibold text-slate-800 mb-8">Shariah Compliance: Automated & Auditable</h3>
-                     <div class="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+        <!-- Paper Trading Demo -->
+        <section id="paper-trade-demo" class="py-20 bg-slate-50">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-slate-800">Interactive Demo: Paper Trading Sandbox</h2>
+                    <p class="text-lg text-slate-600 mt-2 max-w-2xl mx-auto">Experience the core user flow. Allocate virtual funds and see how our pods perform based on simulated historical data.</p>
+                </div>
+                <div class="bg-white p-8 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <!-- Controls -->
+                        <div class="md:col-span-1 space-y-4">
+                             <div class="text-center p-4 border rounded-lg">
+                                <p class="text-sm text-slate-500">Virtual Account Balance</p>
+                                <p id="virtual-balance" class="text-3xl font-bold text-slate-800">PKR 1,000,000</p>
+                            </div>
                             <div>
-                                <h4 class="font-bold text-lg text-slate-800 border-b-2 border-blue-500 pb-2">1. Industry Exclusion</h4>
-                                <ul class="text-sm text-slate-600 mt-2 list-disc list-inside">
-                                    <li>Conventional Banking</li>
-                                    <li>Non-Takaful Insurance</li>
-                                    <li>Alcohol & Tobacco</li>
-                                    <li>Gambling & Adult Ent.</li>
-                                    <li>Pork & Weapons</li>
-                                </ul>
+                                <label for="allocation-amount" class="font-semibold text-slate-700 block mb-1">Allocation Amount (PKR)</label>
+                                <input type="number" id="allocation-amount" value="100000" class="w-full p-2 border border-slate-300 rounded-lg">
                             </div>
-                             <div>
-                                <h4 class="font-bold text-lg text-slate-800 border-b-2 border-blue-500 pb-2">2. Quantitative Filters</h4>
-                                <ul class="text-sm text-slate-600 mt-2 space-y-1">
-                                    <li><b>Debt / Assets:</b> < 33-37%</li>
-                                    <li><b>Interest / Revenue:</b> < 5%</li>
-                                    <li><b>Illiquid Assets / Assets:</b> > 20%</li>
-                                </ul>
+                            <div>
+                                 <label class="font-semibold text-slate-700 block mb-1">Allocate to Pod</label>
+                                 <select id="pod-selection" class="w-full p-2 border border-slate-300 rounded-lg">
+                                    <option value="momentum">Momentum Growth</option>
+                                    <option value="value">Quality Value</option>
+                                    <option value="dividend">Dividend Hunter</option>
+                                 </select>
                             </div>
-                             <div>
-                                <h4 class="font-bold text-lg text-slate-800 border-b-2 border-blue-500 pb-2">3. Purification</h4>
-                                <p class="text-sm text-slate-600 mt-2">Any unavoidable impure income is calculated pro-rata and moved to a "charity pot" for user donation.</p>
+                            <button id="allocate-btn" class="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg cta-button">Allocate Funds</button>
+                            <div id="allocation-log" class="text-sm space-y-2 h-24 overflow-y-auto p-2 border rounded-lg">
+                                <p class="text-slate-400">Allocation log will appear here...</p>
                             </div>
                         </div>
-                        <p class="text-xs text-slate-500 mt-6 text-center">Screening is performed quarterly on financials and the tradable universe is updated daily. All rules are versioned and auditable by our Shariah Board.</p>
+                        <!-- Chart -->
+                        <div class="md:col-span-2">
+                             <canvas id="portfolio-chart"></canvas>
+                             <p class="text-xs text-slate-500 mt-2 text-center">This is a simulation. Past performance is not indicative of future results.</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
-        
-        <!-- Technology Section -->
-        <section id="tech" class="py-20 bg-white">
-             <div class="container mx-auto px-6">
+
+        <!-- The Market Opportunity -->
+        <section id="market" class="py-20 bg-white">
+            <div class="container mx-auto px-6">
                 <div class="text-center mb-12">
-                    <h2 class="text-3xl md:text-4xl font-bold text-slate-800">Scalable & Secure Architecture</h2>
-                    <p class="text-lg text-slate-600 mt-2 max-w-3xl mx-auto">A modern, modular stack designed for multi-market expansion, real-time processing, and institutional-grade security.</p>
+                    <h2 class="text-3xl md:text-4xl font-bold text-slate-800">Tapping the Demographic Dividend</h2>
+                    <p class="text-lg text-slate-600 mt-2">Our initial target markets are young, digital-native, and hungry for modern financial tools.</p>
                 </div>
-                <!-- Architecture Diagram -->
-                <div class="max-w-4xl mx-auto bg-slate-800 text-white p-6 sm:p-8 rounded-2xl font-mono text-xs sm:text-sm">
-                    <div class="text-center mb-4 p-2 bg-slate-900 rounded">UIs & API (REST / WebSocket)</div>
-                    <div class="flex justify-center"><div class="h-6 w-0.5 bg-slate-600"></div></div>
-                    <div class="text-center mb-4 p-2 bg-slate-900 rounded">Orchestration (Kubernetes, API Gateway, Auth)</div>
-                    <div class="flex justify-center"><div class="h-6 w-0.5 bg-slate-600"></div></div>
-                    <div class="grid grid-cols-3 gap-4 text-center">
-                        <div class="p-2 bg-blue-900/50 rounded">Data Ingestion</div>
-                        <div class="p-2 bg-blue-900/50 rounded">Screening Engine</div>
-                        <div class="p-2 bg-blue-900/50 rounded">Strategy Engine</div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                    <div class="relative order-2 lg:order-1">
+                        <svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto">
+                            <path d="M499 0 C223 0 0 165 0 371 C0 458 111 500 250 500 C388 500 482 468 499 432 C516 468 611 500 750 500 C888 500 1000 458 1000 371 C1000 165 776 0 499 0 Z" fill="#dbeafe"/>
+                            <g fill="#94a3b8" class="map-marker" data-country="pakistan" style="animation-delay: 0s;"><circle cx="680" cy="215" r="8" /></g>
+                            <g fill="#94a3b8" class="map-marker" data-country="indonesia" style="animation-delay: 0.2s;"><circle cx="800" cy="370" r="8" /></g>
+                            <g fill="#94a3b8" class="map-marker" data-country="malaysia" style="animation-delay: 0.4s;"><circle cx="780" cy="330" r="8" /></g>
+                            <g fill="#94a3b8" class="map-marker" data-country="nigeria" style="animation-delay: 0.6s;"><circle cx="480" cy="300" r="8" /></g>
+                            <g fill="#94a3b8" class="map-marker" data-country="turkey" style="animation-delay: 0.8s;"><circle cx="580" cy="180" r="8" /></g>
+                            <g fill="#94a3b8" class="map-marker" data-country="bangladesh" style="animation-delay: 1s;"><circle cx="740" cy="240" r="8" /></g>
+                            <g fill="#94a3b8" class="map-marker" data-country="middle_east" style="animation-delay: 1.2s;"><circle cx="610" cy="250" r="8" /></g>
+                            <g fill="#94a3b8" class="map-marker" data-country="thailand" style="animation-delay: 1.4s;"><circle cx="790" cy="280" r="8" /></g>
+                        </svg>
                     </div>
-                    <div class="grid grid-cols-3 gap-4 h-6">
-                        <div class="flex justify-center"><div class="h-full w-0.5 bg-slate-600"></div></div>
-                        <div class="flex justify-center"><div class="h-full w-0.5 bg-slate-600"></div></div>
-                        <div class="flex justify-center"><div class="h-full w-0.5 bg-slate-600"></div></div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-4 text-center">
-                        <div class="p-2 bg-slate-700 rounded">TimeSeries DB</div>
-                        <div class="p-2 bg-slate-700 rounded">Fundamentals DB</div>
-                        <div class="w-full border-t-2 border-slate-600 col-span-1 self-center"></div>
-                    </div>
-                     <div class="grid grid-cols-3 gap-4 h-6">
-                        <div class="w-full border-t-2 border-slate-600 col-span-1 self-center rotate-90 translate-y-3"></div>
-                        <div class="w-full border-t-2 border-slate-600 col-span-2 self-center -translate-x-1/4"></div>
-                    </div>
-                    <div class="text-center mt-2 p-2 bg-amber-800/50 rounded">Execution Engine & Broker Adapters</div>
-                    <div class="flex justify-center"><div class="h-6 w-0.5 bg-slate-600"></div></div>
-                    <div class="grid grid-cols-3 gap-4 text-center">
-                        <div class="p-2 bg-slate-700 rounded">Redis / Kafka</div>
-                        <div class="p-2 bg-slate-700 rounded">Postgres</div>
-                        <div class="p-2 bg-slate-700 rounded">Vault / KMS</div>
-                    </div>
-                </div>
-                 <div class="text-center mt-12">
-                    <h3 class="text-2xl font-semibold text-slate-800 mb-4">Core Tech Stack</h3>
-                    <div class="flex justify-center items-center space-x-6 flex-wrap">
-                        <span class="font-bold p-2 bg-slate-100 rounded">Python 3.10+</span>
-                        <span class="font-bold p-2 bg-slate-100 rounded">Postgres + TimescaleDB</span>
-                        <span class="font-bold p-2 bg-slate-100 rounded">Redis</span>
-                        <span class="font-bold p-2 bg-slate-100 rounded">Kafka</span>
-                        <span class="font-bold p-2 bg-slate-100 rounded">Docker</span>
-                        <span class="font-bold p-2 bg-slate-100 rounded">Kubernetes</span>
-                        <span class="font-bold p-2 bg-slate-100 rounded">Prometheus</span>
-                        <span class="font-bold p-2 bg-slate-100 rounded">Terraform</span>
+                    <div id="market-info" class="bg-white p-8 rounded-2xl shadow-lg order-1 lg:order-2">
+                        <div class="flex items-center mb-4">
+                            <img id="country-flag" src="https://flagcdn.com/w40/pk.png" alt="Country Flag" class="w-10 h-10 rounded-full mr-4 shadow-md">
+                            <div>
+                                <h3 id="country-name" class="text-2xl font-bold text-slate-800">Pakistan</h3>
+                                <p id="country-exchange" class="text-sm text-slate-500 font-medium">Pakistan Stock Exchange (PSX)</p>
+                            </div>
+                        </div>
+                        <p id="country-desc" class="text-slate-600 mb-6">A strategic market with 240M people, significant growth potential, and a strong demand for Shariah-compliant financial products.</p>
+                        <div class="grid grid-cols-3 gap-4 text-center border-t border-slate-200 pt-4">
+                             <div>
+                                <p class="text-sm font-medium text-slate-500">Population</p>
+                                <p id="country-population" class="text-2xl font-bold text-blue-600">240M</p>
+                            </div>
+                             <div>
+                                <p class="text-sm font-medium text-slate-500">Median Age</p>
+                                <p id="country-age" class="text-2xl font-bold text-blue-600">22.8</p>
+                            </div>
+                             <div>
+                                <p class="text-sm font-medium text-slate-500">Smartphone %</p>
+                                <p id="country-smartphone" class="text-2xl font-bold text-blue-600">65%</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -336,78 +305,154 @@
                 </div>
                 <div class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 text-center">
                     <div class="bg-white shadow-lg p-8 rounded-lg">
-                        <h3 class="text-xl font-bold text-slate-800">The Investor</h3>
+                        <h3 class="text-xl font-bold text-slate-800">The Investor (Rabb-ul-Mal)</h3>
                         <p class="text-slate-600 mt-2">Provides the capital.</p>
                         <div class="text-5xl font-extrabold text-blue-600 mt-4">80%</div>
                         <p class="font-semibold text-slate-800">Share of Realized Profits</p>
                     </div>
                      <div class="bg-white shadow-lg p-8 rounded-lg">
-                        <h3 class="text-xl font-bold text-slate-800">AMAR</h3>
+                        <h3 class="text-xl font-bold text-slate-800">AMAR (Mudarib)</h3>
                         <p class="text-slate-600 mt-2">Provides the expertise & technology.</p>
                         <div class="text-5xl font-extrabold text-amber-500 mt-4">20%</div>
                         <p class="font-semibold text-slate-800">Share of Realized Profits</p>
+                    </div>
+                </div>
+                 <div class="text-center max-w-2xl mx-auto mt-8"><p class="text-slate-600">This performance-based model perfectly aligns our interests with our investors'. In case of a loss, the investor bears the financial loss while we lose our time and effort, reinforcing the principle of shared risk.</p><p class="text-sm text-slate-500 mt-4">An optional, small administrative fee (Wakalah) may be applied to cover operational costs.</p></div>
+            </div>
+        </section>
+        
+        <!-- Core Pods Section -->
+        <section id="pods" class="py-20 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-slate-800">Core Trading Pods</h2>
+                    <p class="text-lg text-slate-600 mt-2 max-w-2xl mx-auto">Select a strategy that fits your goals. Our algorithms do the rest.</p>
+                </div>
+                <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+                    <div class="md:col-span-1">
+                        <div id="pod-selector-list" class="space-y-2">
+                            <button class="pod-selector w-full text-left p-4 border rounded-lg active" data-pod="momentum">
+                                <p class="font-bold">Momentum Growth</p><p class="text-sm">Aggressive</p>
+                            </button>
+                            <button class="pod-selector w-full text-left p-4 border rounded-lg" data-pod="value">
+                                <p class="font-bold">Quality Value</p><p class="text-sm">Moderate</p>
+                            </button>
+                            <button class="pod-selector w-full text-left p-4 border rounded-lg" data-pod="dividend">
+                                <p class="font-bold">Dividend Hunter</p><p class="text-sm">Conservative</p>
+                            </button>
+                             <button class="pod-selector w-full text-left p-4 border rounded-lg" data-pod="volatility">
+                                <p class="font-bold">Volatility Arb</p><p class="text-sm">Tactical</p>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="md:col-span-3 bg-slate-50 p-8 rounded-2xl">
+                        <div id="pod-details">
+                            <!-- JS will populate this -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Shariah Compliance Section -->
+        <section id="shariah" class="py-20">
+            <div class="container mx-auto px-6">
+                 <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-slate-800">Shariah Compliance: Automated & Auditable</h2>
+                 </div>
+                 <div class="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                        <div>
+                            <h4 class="font-bold text-lg text-slate-800 border-b-2 border-blue-500 pb-2">1. Industry Exclusion</h4>
+                            <ul class="text-sm text-slate-600 mt-2 list-disc list-inside"><li>Conventional Banking</li><li>Non-Takaful Insurance</li><li>Alcohol & Tobacco</li><li>Gambling & Adult Ent.</li><li>Pork & Weapons</li></ul>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-lg text-slate-800 border-b-2 border-blue-500 pb-2">2. Quantitative Filters</h4>
+                            <ul class="text-sm text-slate-600 mt-2 space-y-1"><li><b>Debt / Assets:</b> &lt; 33-37%</li><li><b>Interest / Revenue:</b> &lt; 5%</li><li><b>Illiquid Assets / Assets:</b> &gt; 20%</li></ul>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-lg text-slate-800 border-b-2 border-blue-500 pb-2">3. Purification</h4>
+                            <p class="text-sm text-slate-600 mt-2">Any unavoidable impure income is calculated pro-rata and moved to a "charity pot" for user donation.</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-6 text-center">Screening is performed quarterly on financials and the tradable universe is updated daily. All rules are versioned and auditable by our Shariah Board.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Technology Section -->
+        <section id="tech" class="py-20 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-slate-800">Scalable & Secure Architecture</h2>
+                    <p class="text-lg text-slate-600 mt-2 max-w-3xl mx-auto">A modern, modular stack designed for multi-market expansion and institutional-grade security.</p>
+                </div>
+                <div class="max-w-5xl mx-auto bg-gray-900 text-white p-8 rounded-2xl font-mono">
+                    <div class="arch-box">UIs & API (REST / WebSocket / SDK)</div>
+                    <div class="arch-connector"></div>
+                    <div class="arch-box bg-blue-900/50">Orchestration (Kubernetes, API Gateway, Auth, Jobs)</div>
+                    <div class="arch-connector arch-t-junction"></div>
+                    <div class="arch-horizontal-connector"></div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="arch-connector"></div>
+                        <div class="arch-connector"></div>
+                        <div class="arch-connector"></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 text-center">
+                        <div class="arch-box">Data Ingestion</div>
+                        <div class="arch-box">Screening Engine</div>
+                        <div class="arch-box">Strategy Engine</div>
+                    </div>
+                    <!-- Connectors to next layer -->
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="arch-connector"></div>
+                        <div class="arch-connector"></div>
+                        <div class="arch-connector"></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 text-center">
+                         <div class="arch-box bg-gray-700">TimeSeries DB</div>
+                         <div class="arch-box bg-gray-700">Fundamentals DB</div>
+                         <div class="relative">
+                            <div class="arch-horizontal-connector absolute top-1/2 -translate-y-1/2 left-0 right-1/2"></div>
+                            <div class="arch-connector absolute left-1/2 top-0 h-1/2 -translate-y-full"></div>
+                         </div>
+                    </div>
+                    <div class="arch-connector"></div>
+                    <div class="arch-box bg-amber-800/50">Execution Engine & Broker Adapters</div>
+                    <div class="arch-connector"></div>
+                     <div class="grid grid-cols-3 gap-4 text-center">
+                        <div class="arch-box bg-gray-700">Redis / Kafka</div>
+                        <div class="arch-box bg-gray-700">Postgres</div>
+                        <div class="arch-box bg-gray-700">Vault / Secrets</div>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- Roadmap Section -->
-        <section id="roadmap" class="py-20 bg-white">
+        <section id="roadmap" class="py-20">
             <div class="container mx-auto px-6">
-                <div class="text-center mb-12">
-                    <h2 class="text-3xl md:text-4xl font-bold text-slate-800">Development Roadmap</h2>
-                </div>
-                <div class="max-w-2xl mx-auto">
-                    <div class="relative pl-8">
-                        <!-- MVP -->
-                        <div class="roadmap-item mb-10">
-                            <div class="roadmap-line"></div>
-                            <h3 class="text-xl font-bold text-slate-800">Phase 0: MVP (0-3 Months)</h3>
-                            <p class="text-slate-500 text-sm mb-2">Q4 2025</p>
-                            <ul class="list-disc list-inside text-slate-600">
-                                <li>Core data ingestion for PSX (daily OHLCV)</li>
-                                <li>Shariah screening engine prototype</li>
-                                <li>2 Pods with backtesting support</li>
-                                <li>Paper trading sandbox (PKR) & basic dashboard</li>
-                            </ul>
-                        </div>
-                        <!-- Pilot -->
-                        <div class="roadmap-item mb-10">
-                            <div class="roadmap-line"></div>
-                             <h3 class="text-xl font-bold text-slate-800">Phase 1: Pilot (3-6 Months)</h3>
-                             <p class="text-slate-500 text-sm mb-2">Q1 2026</p>
-                            <ul class="list-disc list-inside text-slate-600">
-                                <li>Partnership with local broker for live sandbox</li>
-                                <li>Purification automation & Shariah board onboarding</li>
-                                <li>Expanded Pod library & security hardening</li>
-                            </ul>
-                        </div>
-                        <!-- Scale -->
-                        <div class="roadmap-item mb-10">
-                            <div class="roadmap-line"></div>
-                             <h3 class="text-xl font-bold text-slate-800">Phase 2: Scale (6-12 Months)</h3>
-                             <p class="text-slate-500 text-sm mb-2">Q2-Q3 2026</p>
-                            <ul class="list-disc list-inside text-slate-600">
-                                <li>Launch paid pilot with profit-sharing model</li>
-                                <li>Add 2 more exchanges (IDX, NGX) via adapters</li>
-                                <li>Launch mobile apps & developer API</li>
-                            </ul>
-                        </div>
-                         <!-- Expansion -->
-                        <div class="roadmap-item">
-                             <h3 class="text-xl font-bold text-slate-800">Phase 3: Regional Expansion (12-24 Months)</h3>
-                             <p class="text-slate-500 text-sm mb-2">2027</p>
-                            <ul class="list-disc list-inside text-slate-600">
-                                <li>Multi-market pods with currency management</li>
-                                <li>Introduce curated community pod marketplace</li>
-                                <li>Explore regulated custodial services</li>
-                            </ul>
-                        </div>
-                    </div>
+                <div class="text-center mb-12"><h2 class="text-3xl md:text-4xl font-bold text-slate-800">Development Roadmap</h2></div>
+                <div class="max-w-2xl mx-auto"><div class="relative pl-8">
+                    <div class="roadmap-item mb-10"><div class="roadmap-line"></div><h3 class="text-xl font-bold text-slate-800">Phase 0: MVP (0-3 Months)</h3><p class="text-slate-500 text-sm mb-2">Current Stage</p><ul class="list-disc list-inside text-slate-600"><li>Core data ingestion for PSX</li><li>Shariah screening engine prototype</li><li>2 Pods with backtesting support</li><li>Paper trading sandbox & basic dashboard</li></ul></div>
+                    <div class="roadmap-item mb-10"><div class="roadmap-line"></div><h3 class="text-xl font-bold text-slate-800">Phase 1: Pilot (3-6 Months)</h3><ul class="list-disc list-inside text-slate-600"><li>Partnership with local broker for live sandbox</li><li>Purification automation & Shariah board onboarding</li><li>Expanded Pod library & security hardening</li></ul></div>
+                    <div class="roadmap-item mb-10"><div class="roadmap-line"></div><h3 class="text-xl font-bold text-slate-800">Phase 2: Scale (6-12 Months)</h3><ul class="list-disc list-inside text-slate-600"><li>Launch paid pilot with profit-sharing model</li><li>Add 2 more exchanges (IDX, NGX) via adapters</li><li>Launch mobile apps & developer API</li></ul></div>
+                    <div class="roadmap-item"><h3 class="text-xl font-bold text-slate-800">Phase 3: Regional Expansion (12-24 Months)</h3><ul class="list-disc list-inside text-slate-600"><li>Multi-market pods with currency management</li><li>Introduce curated community pod marketplace</li><li>Explore regulated custodial services</li></ul></div>
+                </div></div>
+            </div>
+        </section>
+        
+        <!-- Team Section -->
+        <section id="team" class="py-20 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12"><h2 class="text-3xl md:text-4xl font-bold text-slate-800">Meet the Team</h2><p class="text-lg text-slate-600 mt-2">A balanced team of FinTech, Quantitative, and Shariah expertise.</p></div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                    <div class="text-center"><img src="https://placehold.co/200x200/e2e8f0/64748b?text=AB" alt="Amaan Butt" class="rounded-full mx-auto w-32 h-32 mb-4"><h4 class="font-bold text-xl text-slate-800">Amaan Butt</h4><p class="text-slate-500">CEO & Visionary</p></div>
+                    <div class="text-center"><img src="https://placehold.co/200x200/e2e8f0/64748b?text=AK" alt="Ahmer Khan" class="rounded-full mx-auto w-32 h-32 mb-4"><h4 class="font-bold text-xl text-slate-800">Ahmer Khan</h4><p class="text-slate-500">CTO & Quant Lead</p></div>
+                    <div class="text-center"><img src="https://placehold.co/200x200/e2e8f0/64748b?text=SA" alt="Sadiq Alvi" class="rounded-full mx-auto w-32 h-32 mb-4"><h4 class="font-bold text-xl text-slate-800">Sadiq Alvi</h4><p class="text-slate-500">Chief Shariah Officer</p></div>
                 </div>
             </div>
         </section>
-
     </main>
 
     <!-- Footer / Contact -->
@@ -415,27 +460,268 @@
         <div class="container mx-auto px-6 py-12 text-center">
             <h2 class="text-3xl font-bold text-white mb-4">Let's Build the Future of Halal Investing.</h2>
             <p class="max-w-2xl mx-auto mb-8">We are currently in our seed stage and are looking for strategic partners and investors. If our vision resonates with you, we'd love to talk.</p>
-            <a href="mailto:invest@amar.finance" class="bg-amber-400 text-slate-900 font-bold px-8 py-4 rounded-lg cta-button text-lg">
-                Request a Demo or Pitch Deck
-            </a>
-            <div class="mt-12 pt-8 border-t border-slate-700 text-sm">
-                <p>&copy; 2025 Al-Mudarib Al-Raqmi (Concept). All Rights Reserved.</p>
-            </div>
+            <a href="mailto:invest@amar.finance" class="bg-amber-400 text-slate-900 font-bold px-8 py-4 rounded-lg cta-button text-lg">Request a Demo or Pitch Deck</a>
+            <div class="mt-12 pt-8 border-t border-slate-700 text-sm"><p>&copy; 2025 Al-Mudarib Al-Raqmi (Concept). All Rights Reserved.</p></div>
         </div>
     </footer>
 
-    <!-- JavaScript Logic -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Mobile Menu Toggle
+            // Mobile Menu
             const mobileMenuButton = document.getElementById('mobile-menu-button');
             const mobileMenu = document.getElementById('mobile-menu');
-            mobileMenuButton.addEventListener('click', () => {
-                mobileMenu.classList.toggle('hidden');
+            mobileMenuButton.addEventListener('click', () => { mobileMenu.classList.toggle('hidden'); });
+
+            // Market Spotlight
+            const markers = document.querySelectorAll('.map-marker');
+            const countryName = document.getElementById('country-name');
+            const countryDesc = document.getElementById('country-desc');
+            const countryFlag = document.getElementById('country-flag');
+            const countryExchange = document.getElementById('country-exchange');
+            const countryPopulation = document.getElementById('country-population');
+            const countryAge = document.getElementById('country-age');
+            const countrySmartphone = document.getElementById('country-smartphone');
+
+            const marketData = {
+                pakistan: { 
+                    name: "Pakistan", 
+                    exchange: "Pakistan Stock Exchange (PSX)",
+                    flag: "https://flagcdn.com/w40/pk.png",
+                    desc: "A strategic market with 240M people, significant growth potential, and a strong demand for Shariah-compliant financial products.",
+                    population: "240M",
+                    age: "22.8",
+                    smartphone: "65%"
+                },
+                indonesia: { 
+                    name: "Indonesia", 
+                    exchange: "Indonesia Stock Exchange (IDX)",
+                    flag: "https://flagcdn.com/w40/id.png",
+                    desc: "Southeast Asia's largest economy with over 280M people. A global leader in Islamic finance with a mature market for Halal equities.",
+                    population: "280M",
+                    age: "29.7",
+                    smartphone: "75%"
+                },
+                malaysia: { 
+                    name: "Malaysia", 
+                    exchange: "Bursa Malaysia",
+                    flag: "https://flagcdn.com/w40/my.png",
+                    desc: "A global hub for Islamic finance, featuring a highly developed regulatory framework and a wide range of Shariah-compliant securities.",
+                    population: "34M",
+                    age: "30.3",
+                    smartphone: "92%"
+                },
+                nigeria: { 
+                    name: "Nigeria", 
+                    exchange: "Nigerian Exchange (NGX)",
+                    flag: "https://flagcdn.com/w40/ng.png",
+                    desc: "Africa's largest economy with 220M people. A frontier market with immense growth potential in ethical and Halal investing.",
+                    population: "220M",
+                    age: "18.1",
+                    smartphone: "55%"
+                },
+                turkey: { 
+                    name: "Turkey", 
+                    exchange: "Borsa Istanbul",
+                    flag: "https://flagcdn.com/w40/tr.png",
+                    desc: "A major transcontinental market with strong industrial and financial sectors, and a growing interest in participation finance.",
+                    population: "85M",
+                    age: "31.5",
+                    smartphone: "80%"
+                },
+                bangladesh: { 
+                    name: "Bangladesh", 
+                    exchange: "Dhaka Stock Exchange (DSE)",
+                    flag: "https://flagcdn.com/w40/bd.png",
+                    desc: "One of the world's fastest-growing economies with a large, untapped retail investor base seeking ethical investment vehicles.",
+                    population: "170M",
+                    age: "27.9",
+                    smartphone: "58%"
+                },
+                middle_east: { 
+                    name: "Middle East", 
+                    exchange: "Tadawul, DFM, Boursa Kuwait",
+                    flag: "https://flagcdn.com/w40/sa.png",
+                    desc: "The heart of global finance with deep capital markets in Saudi Arabia, UAE, and Kuwait, driven by sovereign wealth.",
+                    population: "100M+",
+                    age: "31.2",
+                    smartphone: "95%"
+                },
+                thailand: { 
+                    name: "Thailand", 
+                    exchange: "Stock Exchange of Thailand (SET)",
+                    flag: "https://flagcdn.com/w40/th.png",
+                    desc: "A key player in ASEAN with a sophisticated exchange and increasing options for socially responsible and ethical investing.",
+                    population: "71M",
+                    age: "39.3",
+                    smartphone: "85%"
+                }
+            };
+            markers.forEach(marker => {
+                marker.addEventListener('mouseover', () => {
+                    const country = marker.dataset.country;
+                    const data = marketData[country];
+                    countryName.textContent = data.name;
+                    countryDesc.textContent = data.desc;
+                    countryFlag.src = data.flag;
+                    countryExchange.textContent = data.exchange;
+                    countryPopulation.textContent = data.population;
+                    countryAge.textContent = data.age;
+                    countrySmartphone.textContent = data.smartphone;
+                });
             });
+
+            // Core Trading Pods
+            const podSelectors = document.querySelectorAll('.pod-selector');
+            const podDetailsContainer = document.getElementById('pod-details');
+            const podData = {
+                momentum: {
+                    title: 'Momentum Growth',
+                    risk: 'Aggressive',
+                    riskColor: 'text-amber-500',
+                    desc: 'Aims for high capital appreciation by trading stocks exhibiting strong recent price performance. Suitable for investors with a high risk tolerance.',
+                    logic: 'Identifies trends using a 3-6 month momentum score, confirmed with 20/50 Exponential Moving Average (EMA) crossovers. Positions are protected with a dynamic stop-loss based on the Average True Range (ATR).'
+                },
+                value: {
+                    title: 'Quality Value',
+                    risk: 'Moderate',
+                    riskColor: 'text-blue-500',
+                    desc: 'Invests in fundamentally strong, undervalued companies with the potential for long-term growth. A balanced approach to risk and reward.',
+                    logic: 'Selects stocks with a high Piotroski F-score and a P/E ratio below the sector median. Entries are timed to buy on dips, indicated by the Relative Strength Index (RSI) falling below 40.'
+                },
+                dividend: {
+                    title: 'Dividend Hunter',
+                    risk: 'Conservative',
+                    riskColor: 'text-green-500',
+                    desc: 'Focuses on generating stable income through high-yield, dividend-paying stocks from companies with consistent cash flows.',
+                    logic: 'Identifies companies with a history of high dividend yields and financial stability. This is a long-hold strategy with periodic rebalancing to maintain optimal yield and diversification.'
+                },
+                 volatility: {
+                    title: 'Volatility Arbitrage',
+                    risk: 'Tactical',
+                    riskColor: 'text-purple-500',
+                    desc: 'A tactical strategy that seeks to profit from short-term price movements and volatility breakouts, independent of market direction.',
+                    logic: 'Executes trades when a stock\'s price breaks out of its recent volatility range. Position sizes are dynamically adjusted based on volatility forecasts from a GARCH statistical model.'
+                }
+            };
+            
+            function updatePodDetails(podKey) {
+                const data = podData[podKey];
+                podDetailsContainer.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                           <h3 class="text-2xl font-bold text-slate-800">${data.title}</h3>
+                           <p class="font-semibold ${data.riskColor}">${data.risk}</p>
+                        </div>
+                    </div>
+                    <p class="text-slate-600 mt-4">${data.desc}</p>
+                    <div class="mt-4 pt-4 border-t border-slate-200">
+                        <h4 class="font-semibold text-slate-700">Strategy Logic</h4>
+                        <p class="text-sm text-slate-600 mt-1">${data.logic}</p>
+                    </div>
+                `;
+            }
+
+            podSelectors.forEach(selector => {
+                selector.addEventListener('click', () => {
+                    podSelectors.forEach(s => s.classList.remove('active'));
+                    selector.classList.add('active');
+                    updatePodDetails(selector.dataset.pod);
+                });
+            });
+
+            // Init default pod view
+            updatePodDetails('momentum');
+
+            // Paper Trading Sandbox
+            const allocateBtn = document.getElementById('allocate-btn');
+            const allocationAmountInput = document.getElementById('allocation-amount');
+            const podSelection = document.getElementById('pod-selection');
+            const virtualBalanceEl = document.getElementById('virtual-balance');
+            const allocationLog = document.getElementById('allocation-log');
+            let portfolioChart;
+            
+            let virtualBalance = 1000000;
+            let allocations = {};
+            
+            function generatePodData(base, volatility, trend, length) {
+                let data = [];
+                let value = base;
+                for (let i = 0; i < length; i++) {
+                    let noise = (Math.random() - 0.5) * volatility;
+                    value *= (1 + trend + noise);
+                    data.push(value);
+                }
+                return data;
+            }
+            
+            function updateChart() {
+                const ctx = document.getElementById('portfolio-chart').getContext('2d');
+                if (portfolioChart) {
+                    portfolioChart.destroy();
+                }
+
+                const labels = Array.from({length: 30}, (_, i) => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - (29-i));
+                    return d;
+                });
+
+                const datasets = Object.keys(allocations).map(pod => {
+                    const podConfig = {
+                        momentum: { color: 'rgba(245, 158, 11, 0.8)', vol: 0.02, trend: 0.003 },
+                        value: { color: 'rgba(59, 130, 246, 0.8)', vol: 0.01, trend: 0.0015 },
+                        dividend: { color: 'rgba(16, 185, 129, 0.8)', vol: 0.005, trend: 0.001 }
+                    }[pod];
+                    
+                    return {
+                        label: `${pod.charAt(0).toUpperCase() + pod.slice(1)} Pod`,
+                        data: generatePodData(allocations[pod], podConfig.vol, podConfig.trend, 30),
+                        borderColor: podConfig.color,
+                        tension: 0.1,
+                        pointRadius: 0
+                    };
+                });
+                
+                portfolioChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels, datasets },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: { type: 'time', time: { unit: 'day' } },
+                            y: { ticks: { callback: value => `PKR ${value.toLocaleString()}` } }
+                        },
+                        plugins: { tooltip: { mode: 'index', intersect: false } }
+                    }
+                });
+            }
+
+            allocateBtn.addEventListener('click', () => {
+                const amount = parseInt(allocationAmountInput.value);
+                const pod = podSelection.value;
+                if (amount > 0 && amount <= virtualBalance) {
+                    virtualBalance -= amount;
+                    virtualBalanceEl.textContent = `PKR ${virtualBalance.toLocaleString()}`;
+                    
+                    allocations[pod] = (allocations[pod] || 0) + amount;
+
+                    const logEntry = document.createElement('p');
+                    logEntry.textContent = `Allocated PKR ${amount.toLocaleString()} to ${pod} Pod.`;
+                    if (allocationLog.firstChild.textContent.includes('...')) {
+                       allocationLog.innerHTML = '';
+                    }
+                    allocationLog.prepend(logEntry);
+                    
+                    updateChart();
+                } else {
+                    alert('Invalid amount or insufficient balance.');
+                }
+            });
+            
+            updateChart(); // Initial empty chart
         });
     </script>
-
 </body>
 </html>
+
 
